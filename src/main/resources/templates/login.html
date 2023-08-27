@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <title>Login page</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-/Y6pD6FV/Vv2HJnA6t+vslU6fwYXjCFtcEpHbNJ0lyAFsXTsjBbfaDjzALeQsN6M" crossorigin="anonymous">
+    <link href="https://getbootstrap.com/docs/4.0/examples/signin/signin.css" rel="stylesheet" crossorigin="anonymous"/>
+</head>
+<body>
+<div class="container">
+    <div class="form-signin">
+        <h3 class="form-signin-heading">Please sign in</h3>
+        <p th:if="${param.error}" class="text-danger">Invalid signature</p>
+        <button class="btn btn-lg btn-primary btn-block" type="submit" onclick="login()">Login with MetaMask</button>
+    </div>
+</div>
+<script th:inline="javascript">
+    async function login() {
+        if (!window.ethereum) {
+            console.error('Please install MetaMask');
+            return;
+        }
+
+        // Prompt user to connect MetaMask
+        const accounts = await window.ethereum.request({method: 'eth_requestAccounts'});
+        const address = accounts[0];
+
+        // Receive nonce and sign a message
+        const nonce = await getNonce(address);
+        const message = `Signing a message to login: ${nonce}`;
+        const signature = await window.ethereum.request({method: 'personal_sign', params: [message, address]});
+
+        // Login with signature
+        await sendLoginData(address, signature);
+    }
+
+    async function getNonce(address) {
+        return await fetch(`/nonce/${address}`)
+            .then(response => response.text());
+    }
+
+    async function sendLoginData(address, signature) {
+        return fetch('/login', {
+            method: 'POST',
+            headers: {'content-type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({
+                address: encodeURIComponent(address),
+                signature: encodeURIComponent(signature)
+            })
+        }).then((response) => window.location.href = response.url);
+    }
+</script>
+</body>
+</html>
